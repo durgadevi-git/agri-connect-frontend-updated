@@ -4,11 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { ManpowerService, OrderService } from '../../services/services';
 import { AuthService } from '../../services/auth.service';
 import { ManpowerListing, User, Notification } from '../../models/models';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-manpower',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, HttpClientModule],
   template: `
     <div class="page-header">
       <div>
@@ -210,12 +212,12 @@ import { ManpowerListing, User, Notification } from '../../models/models';
               <input class="form-control" type="number" [(ngModel)]="form.dailyRate" name="rate" required>
             </div>
             <div class="form-group">
-              <label class="form-label">Location</label>
+              <label class="form-label">Location *</label>
               <input class="form-control" [(ngModel)]="form.location" name="location" placeholder="City, District">
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Skills <span class="form-hint">(comma separated)</span></label>
+            <label class="form-label">Skills * <span class="form-hint">(comma separated)</span></label>
             <input class="form-control" [(ngModel)]="form.skills" name="skills"
               placeholder="e.g. Plowing, Harvesting, Irrigation">
           </div>
@@ -241,13 +243,13 @@ import { ManpowerListing, User, Notification } from '../../models/models';
 
     <!-- ══ HIRE MODAL ══ -->
     <div class="modal-overlay" *ngIf="selectedWorker" (click)="selectedWorker=null">
-      <div class="modal anim-modal" (click)="$event.stopPropagation()">
+      <div class="modal anim-modal modal-wide" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h3 class="modal-title"><i class="fas fa-handshake"></i> Send Hire Request</h3>
           <button class="modal-close" (click)="selectedWorker=null"><i class="fas fa-times"></i></button>
         </div>
 
-        <!-- Worker summary card inside modal -->
+        <!-- Worker summary -->
         <div class="hire-worker-card">
           <div class="hwc-avatar" [style.background]="avatarColor(selectedWorker.workerName)">
             {{ selectedWorker.workerName[0].toUpperCase() }}
@@ -256,26 +258,79 @@ import { ManpowerListing, User, Notification } from '../../models/models';
             <div class="hwc-name">{{ selectedWorker.workerName }}</div>
             <div class="hwc-title">{{ selectedWorker.title }}</div>
           </div>
-          <div class="hwc-rate">₹{{ selectedWorker.dailyRate }}<span>/day</span></div>
+          <div class="hwc-rate">
+            ₹{{ selectedWorker.dailyRate }}<span>/day</span>
+            <div style="font-size:0.75rem;color:#4a9050" *ngIf="selectedWorker.hourlyRate">₹{{ selectedWorker.hourlyRate }}/hr</div>
+          </div>
         </div>
 
-        <div class="two-col">
-          <div class="form-group">
-            <label class="form-label">Work Start Date</label>
-            <input class="form-control" type="date" [(ngModel)]="hireForm.workDate" [min]="todayStr">
-          </div>
+        <!-- Booking Mode Tabs -->
+        <div class="mode-tabs">
+          <button class="mode-tab" [class.mode-tab-active]="hireForm.mode==='daily'" (click)="setHireMode('daily')">📅 Daily</button>
+          <button class="mode-tab" [class.mode-tab-active]="hireForm.mode==='hourly'" (click)="setHireMode('hourly')">⏰ Hourly</button>
+        </div>
+
+        <div class="form-group" style="margin-top:14px">
+          <label class="form-label">Work Date</label>
+          <input class="form-control" type="date" [(ngModel)]="hireForm.workDate" [min]="todayStr" (change)="onHireDateChange()">
+        </div>
+
+        <!-- DAILY MODE -->
+        <ng-container *ngIf="hireForm.mode==='daily'">
           <div class="form-group">
             <label class="form-label">Number of Days</label>
             <input class="form-control" type="number" min="1" [(ngModel)]="hireForm.days">
           </div>
-        </div>
+          <div class="total-pill" *ngIf="hireForm.workDate">
+            <span>Total Cost</span>
+            <div>
+              <div *ngIf="loadingAvail" style="font-size:0.8rem;color:#6b8f70">⏳ Checking...</div>
+              <div class="avail-blocked-sm" *ngIf="!loadingAvail && manpowerAvail?.fullyBooked">🔒 Fully booked on this day</div>
+              <div class="avail-free-sm" *ngIf="!loadingAvail && manpowerAvail && !manpowerAvail.fullyBooked">✅ Available</div>
+            </div>
+            <span class="total-num">₹{{ (selectedWorker.dailyRate || 0) * (hireForm.days || 1) }}</span>
+          </div>
+        </ng-container>
 
-        <div class="total-pill">
-          <span>Total Cost</span>
-          <span class="total-num">₹{{ (selectedWorker.dailyRate || 0) * (hireForm.days || 1) }}</span>
-        </div>
+        <!-- HOURLY MODE -->
+        <ng-container *ngIf="hireForm.mode==='hourly'">
+          <div class="slot-section">
+            <div class="slot-label">
+              ⏰ Select Start Hour
+              <span class="slot-legend">
+                <span class="slot-dot slot-free"></span>Free
+                <span class="slot-dot slot-taken"></span>Booked
+                <span class="slot-dot slot-selected"></span>Selected
+              </span>
+            </div>
+            <div *ngIf="loadingAvail" class="avail-loading">⏳ Loading availability...</div>
+            <div *ngIf="manpowerAvail?.fullyBooked && !loadingAvail" class="avail-blocked">
+              🔒 <strong>Fully booked on this date.</strong> Choose a different date.
+            </div>
+            <div class="hour-grid" *ngIf="!loadingAvail && manpowerAvail && !manpowerAvail.fullyBooked">
+              <button *ngFor="let h of hours"
+                class="hour-slot"
+                [class.hour-taken]="isManpowerHourTaken(h)"
+                [class.hour-selected]="isManpowerHourInRange(h)"
+                [class.hour-start]="h === hireForm.startHour"
+                [disabled]="isManpowerHourTaken(h)"
+                (click)="selectManpowerHour(h)">
+                {{ h }}:00
+              </button>
+            </div>
+            <div class="form-group" style="margin-top:12px">
+              <label class="form-label">Number of Hours</label>
+              <input class="form-control" type="number" min="1" max="12" [(ngModel)]="hireForm.numHours" style="max-width:100px" (ngModelChange)="checkManpowerConflict()">
+            </div>
+            <div class="avail-blocked" *ngIf="manpowerHourConflict">⚠️ {{ manpowerHourConflict }}</div>
+          </div>
+          <div class="total-pill" *ngIf="hireForm.startHour !== null">
+            <span>Total Cost</span>
+            <span class="total-num">₹{{ calcManpowerHourlyPrice() }}</span>
+          </div>
+        </ng-container>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-top:14px">
           <label class="form-label">Message <span class="form-hint">(optional)</span></label>
           <textarea class="form-control" [(ngModel)]="hireForm.message" rows="2"
             placeholder="Describe the work, location, any requirements..."></textarea>
@@ -283,7 +338,7 @@ import { ManpowerListing, User, Notification } from '../../models/models';
 
         <div class="modal-footer-row">
           <button class="btn btn-outline" (click)="selectedWorker=null">Cancel</button>
-          <button class="btn btn-primary" (click)="hire()" [disabled]="saving">
+          <button class="btn btn-primary" (click)="hire()" [disabled]="saving || (manpowerAvail?.fullyBooked) || !!manpowerHourConflict">
             <span class="spinner" *ngIf="saving"></span>
             <i class="fas fa-paper-plane" *ngIf="!saving"></i>
             {{ saving ? 'Sending...' : 'Send Hire Request' }}
@@ -507,6 +562,35 @@ import { ManpowerListing, User, Notification } from '../../models/models';
 
     @keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+    /* ── Booking mode tabs ── */
+    .mode-tabs { display:flex; gap:0; border:1.5px solid rgba(30,138,44,0.2); border-radius:10px; overflow:hidden; margin-bottom:4px; }
+    .mode-tab { flex:1; padding:10px; border:none; background:#fff; cursor:pointer; font-family:'Outfit',sans-serif; font-size:0.84rem; font-weight:600; color:#6b8f70; transition:all 0.18s; }
+    .mode-tab:first-child { border-right:1.5px solid rgba(30,138,44,0.2); }
+    .mode-tab-active { background:#f0faf2; color:#1a5e2a; }
+    .mode-tab:hover { background:#f5fbf5; }
+    .modal-wide { max-width:560px !important; }
+
+    /* ── Availability ── */
+    .avail-loading { font-size:0.82rem; color:#6b8f70; padding:6px 0; }
+    .avail-blocked { background:#fee2e2; color:#dc2626; border:1px solid #fecaca; padding:10px 14px; border-radius:10px; font-size:0.85rem; margin:8px 0; }
+    .avail-blocked-sm { font-size:0.78rem; color:#dc2626; font-weight:600; }
+    .avail-free-sm { font-size:0.78rem; color:#16a34a; font-weight:600; }
+
+    /* ── Hour slot picker ── */
+    .slot-section { background:#f8fdf9; border:1px solid rgba(30,138,44,0.15); border-radius:12px; padding:14px; }
+    .slot-label { font-size:0.85rem; font-weight:700; color:#1a5e2a; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; }
+    .slot-legend { display:flex; align-items:center; gap:10px; font-size:0.74rem; font-weight:500; color:#6b8f70; }
+    .slot-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; }
+    .slot-free { background:#dcfce7; border:1.5px solid #86efac; }
+    .slot-taken { background:#fee2e2; border:1.5px solid #fca5a5; }
+    .slot-selected { background:#4a9050; border:1.5px solid #357540; }
+    .hour-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+    .hour-slot { padding:8px 4px; border-radius:8px; border:1.5px solid rgba(30,138,44,0.2); background:#fff; color:#1a5e2a; font-size:0.74rem; font-weight:700; cursor:pointer; transition:all 0.15s; text-align:center; font-family:'JetBrains Mono',monospace; }
+    .hour-slot:hover:not(:disabled) { background:#f0faf2; border-color:#4a9050; transform:scale(1.05); }
+    .hour-taken { background:#fee2e2 !important; border-color:#fca5a5 !important; color:#dc2626 !important; cursor:not-allowed !important; opacity:0.7; }
+    .hour-selected { background:#dcfce7 !important; border-color:#4a9050 !important; }
+    .hour-start { background:#4a9050 !important; border-color:#357540 !important; color:#fff !important; }
   `]
 })
 export class ManpowerComponent implements OnInit {
@@ -522,10 +606,14 @@ export class ManpowerComponent implements OnInit {
   saving = false;
   loading = false;
   loadingRequests = false;
+  loadingAvail = false;
+  manpowerAvail: any = null;
+  manpowerHourConflict = '';
+  hours = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
   success = '';
   error = '';
   form: any = { title: '', skills: '', dailyRate: 0, location: '', experience: '', description: '' };
-  hireForm: any = { workDate: '', days: 1, message: '' };
+  hireForm: any = { workDate: '', days: 1, mode: 'daily', startHour: null, numHours: 2, message: '' };
   todayStr = new Date().toISOString().split('T')[0];
 
   get unreadCount(): number {
@@ -535,7 +623,8 @@ export class ManpowerComponent implements OnInit {
   constructor(
     private manpowerService: ManpowerService,
     private orderService: OrderService,
-    private authService: AuthService
+    private authService: AuthService,
+    private http: HttpClient
   ) {}
 
   ngOnInit() {
@@ -591,10 +680,79 @@ export class ManpowerComponent implements OnInit {
 
   openHireModal(w: ManpowerListing) {
     this.selectedWorker = w;
-    this.hireForm = { workDate: this.todayStr, days: 1, message: '' };
+    this.manpowerAvail = null;
+    this.manpowerHourConflict = '';
+    this.hireForm = { workDate: this.todayStr, days: 1, mode: 'daily', startHour: null, numHours: 2, message: '' };
+    this.loadManpowerAvailability();
+  }
+
+  setHireMode(mode: string) {
+    this.hireForm.mode = mode;
+    this.hireForm.startHour = null;
+    this.manpowerHourConflict = '';
+    this.loadManpowerAvailability();
+  }
+
+  onHireDateChange() {
+    this.manpowerAvail = null;
+    this.hireForm.startHour = null;
+    this.manpowerHourConflict = '';
+    this.loadManpowerAvailability();
+  }
+
+  loadManpowerAvailability() {
+    if (!this.selectedWorker || !this.hireForm.workDate) return;
+    this.loadingAvail = true;
+    this.http.get<any>(`${environment.apiUrl}/manpower/${this.selectedWorker.id}/availability?date=${this.hireForm.workDate}`)
+      .subscribe({
+        next: (res) => { this.manpowerAvail = res; this.loadingAvail = false; },
+        error: () => { this.loadingAvail = false; }
+      });
+  }
+
+  selectManpowerHour(h: number) {
+    if (this.isManpowerHourTaken(h)) return;
+    this.hireForm.startHour = h;
+    this.checkManpowerConflict();
+  }
+
+  isManpowerHourTaken(h: number): boolean {
+    return this.manpowerAvail?.bookedHours?.includes(h) ?? false;
+  }
+
+  isManpowerHourInRange(h: number): boolean {
+    if (this.hireForm.startHour === null) return false;
+    return h > this.hireForm.startHour && h < this.hireForm.startHour + this.hireForm.numHours;
+  }
+
+  checkManpowerConflict() {
+    this.manpowerHourConflict = '';
+    if (this.hireForm.startHour === null || !this.manpowerAvail) return;
+    for (let h = this.hireForm.startHour; h < this.hireForm.startHour + this.hireForm.numHours; h++) {
+      if (this.isManpowerHourTaken(h)) {
+        this.manpowerHourConflict = `Hour ${h}:00 is already booked. Adjust selection.`;
+        return;
+      }
+    }
+  }
+
+  effectiveManpowerHourlyRate(): number {
+    if (!this.selectedWorker) return 0;
+    if (this.selectedWorker.hourlyRate) return +this.selectedWorker.hourlyRate;
+    return +(+this.selectedWorker.dailyRate / 8).toFixed(0);
+  }
+
+  calcManpowerHourlyPrice(): number {
+    return this.effectiveManpowerHourlyRate() * (this.hireForm.numHours || 1);
   }
 
   saveProfile() {
+    if (!this.form.title?.trim())      { this.error = 'Job Title is required.'; return; }
+    if (!this.form.dailyRate || this.form.dailyRate <= 0) { this.error = 'Daily Rate must be greater than 0.'; return; }
+    if (!this.form.location?.trim())   { this.error = 'Location is required.'; return; }
+    if (!this.form.skills?.trim())     { this.error = 'Skills are required.'; return; }
+    if (!this.form.experience?.trim()) { this.error = 'Experience is required.'; return; }
+    this.error = '';
     this.saving = true;
     this.manpowerService.create(this.form).subscribe({
       next: () => {
@@ -610,8 +768,24 @@ export class ManpowerComponent implements OnInit {
 
   hire() {
     if (!this.selectedWorker) return;
-    this.saving = true;
-    this.manpowerService.hire({ workerId: this.selectedWorker.workerId, ...this.hireForm }).subscribe({
+    if (this.hireForm.mode === 'hourly' && this.hireForm.startHour === null) {
+      this.error = 'Please select a start hour'; return;
+    }
+    this.saving = true; this.error = '';
+    const payload: any = {
+      workerId: this.selectedWorker.workerId,
+      listingId: this.selectedWorker.id,
+      workDate: this.hireForm.workDate,
+      bookingMode: this.hireForm.mode,
+      message: this.hireForm.message
+    };
+    if (this.hireForm.mode === 'daily') {
+      payload.days = this.hireForm.days;
+    } else {
+      payload.startHour = this.hireForm.startHour;
+      payload.numHours = this.hireForm.numHours;
+    }
+    this.manpowerService.hire(payload).subscribe({
       next: () => {
         this.success = 'Hire request sent! The worker has been notified.';
         this.saving = false;

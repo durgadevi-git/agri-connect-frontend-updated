@@ -85,6 +85,8 @@ export class ManpowerService {
   update(id: number, data: any): Observable<any> { return this.http.put(`${this.url}/${id}`, data); }
   delete(id: number): Observable<any> { return this.http.delete(`${this.url}/${id}`); }
   hire(data: any): Observable<any> { return this.http.post(`${this.url}/hire`, data); }
+  getBookings(): Observable<any[]> { return this.http.get<any[]>(`${this.url}/bookings`); }
+  updateBooking(id: number, status: string): Observable<any> { return this.http.patch(`${this.url}/bookings/${id}`, { status }); }
 }
 
 // ─── Chat Service ─────────────────────────────────────────

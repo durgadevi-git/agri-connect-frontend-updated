@@ -55,8 +55,14 @@ import { Router } from '@angular/router';
             <span class="cs-dot"></span>{{ crop.status || 'available' }}
           </span>
         </div>
+        <!-- Crop Image -->
+        <div class="cc-img-wrap">
+          <img [src]="crop.imageUrl || cropPlaceholder(crop.category)"
+               [alt]="crop.cropName"
+               class="cc-img"
+               (error)="onCropImgErr($event, crop.category)">
+        </div>
         <div class="cc-main">
-          <div class="cc-emoji">{{ getCropEmoji(crop.category) }}</div>
           <div>
             <div class="cc-name">{{ crop.cropName }}</div>
             <div class="cc-farmer"><i class="fas fa-user"></i> {{ crop.farmerName }}</div>
@@ -111,7 +117,10 @@ import { Router } from '@angular/router';
           </div>
 
           <div class="crop-summary">
-            <div class="cs-emoji">{{ getCropEmoji(selectedCrop?.category) }}</div>
+            <img [src]="selectedCrop?.imageUrl || cropPlaceholder(selectedCrop?.category)"
+                 [alt]="selectedCrop?.cropName"
+                 class="cs-img"
+                 (error)="onCropImgErr($event, selectedCrop?.category)">
             <div>
               <div class="cs-name">{{ selectedCrop?.cropName }}</div>
               <div class="cs-price">₹{{ selectedCrop?.pricePerUnit }} per {{ selectedCrop?.unit }}</div>
@@ -378,6 +387,13 @@ import { Router } from '@angular/router';
     .crop-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:18px; }
     .crop-card { background:#fff; border-radius:14px; border:1px solid rgba(30,138,44,0.12); padding:20px; box-shadow:0 1px 4px rgba(0,0,0,0.05); transition:all 0.2s; animation:fadeUp 0.4s ease both; }
     .crop-card:hover { border-color:rgba(30,138,44,0.3); box-shadow:0 6px 20px rgba(30,138,44,0.1); transform:translateY(-2px); }
+
+    /* Crop Image in card */
+    .cc-img-wrap { margin:-20px -20px 14px; height:165px; overflow:hidden; border-radius:14px 14px 0 0; }
+    .cc-img { width:100%; height:100%; object-fit:cover; transition:transform 0.35s ease; display:block; }
+    .crop-card:hover .cc-img { transform:scale(1.06); }
+    /* Modal summary image */
+    .cs-img { width:64px; height:64px; border-radius:10px; object-fit:cover; flex-shrink:0; border:2px solid rgba(30,138,44,0.15); }
 
     .cc-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
     .cc-cat { font-size:0.72rem; font-weight:700; background:#e8faea; color:#16a34a; padding:3px 10px; border-radius:20px; }
@@ -705,5 +721,21 @@ export class MarketplaceComponent implements OnInit {
   getCropEmoji(cat?: string): string {
     const m: Record<string,string> = { Vegetables:'🥬', Fruits:'🍎', Grains:'🌾', Pulses:'🫘', Spices:'🌶️', Flowers:'🌸' };
     return m[cat || ''] || '🌱';
+  }
+
+  cropPlaceholder(category?: string): string {
+    const PLACEHOLDERS: Record<string, string> = {
+      Vegetables: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23dcfce7'/%3E%3Ctext x='150' y='95' text-anchor='middle' font-size='64'%3E%F0%9F%A5%A6%3C/text%3E%3Ctext x='150' y='150' text-anchor='middle' font-size='16' fill='%23166534' font-family='sans-serif'%3EVegetables%3C/text%3E%3C/svg%3E`,
+      Fruits:     `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23fef9c3'/%3E%3Ctext x='150' y='95' text-anchor='middle' font-size='64'%3E%F0%9F%8D%8A%3C/text%3E%3Ctext x='150' y='150' text-anchor='middle' font-size='16' fill='%23713f12' font-family='sans-serif'%3EFruits%3C/text%3E%3C/svg%3E`,
+      Grains:     `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23fef3c7'/%3E%3Ctext x='150' y='95' text-anchor='middle' font-size='64'%3E%F0%9F%8C%BE%3C/text%3E%3Ctext x='150' y='150' text-anchor='middle' font-size='16' fill='%2392400e' font-family='sans-serif'%3EGrains%3C/text%3E%3C/svg%3E`,
+      Pulses:     `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23fce7f3'/%3E%3Ctext x='150' y='95' text-anchor='middle' font-size='64'%3E%F0%9F%AB%98%3C/text%3E%3Ctext x='150' y='150' text-anchor='middle' font-size='16' fill='%239d174d' font-family='sans-serif'%3EPulses%3C/text%3E%3C/svg%3E`,
+      Spices:     `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23ffedd5'/%3E%3Ctext x='150' y='95' text-anchor='middle' font-size='64'%3E%F0%9F%8C%B6%3C/text%3E%3Ctext x='150' y='150' text-anchor='middle' font-size='16' fill='%239a3412' font-family='sans-serif'%3ESpices%3C/text%3E%3C/svg%3E`,
+      Oilseeds:   `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23fef9c3'/%3E%3Ctext x='150' y='95' text-anchor='middle' font-size='64'%3E%F0%9F%A5%9C%3C/text%3E%3Ctext x='150' y='150' text-anchor='middle' font-size='16' fill='%23713f12' font-family='sans-serif'%3EOilseeds%3C/text%3E%3C/svg%3E`,
+    };
+    return PLACEHOLDERS[category || ''] || `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='300' height='200' fill='%23f0fdf4'/%3E%3Ctext x='150' y='95' text-anchor='middle' font-size='64'%3E%F0%9F%8C%BF%3C/text%3E%3Ctext x='150' y='150' text-anchor='middle' font-size='16' fill='%23166534' font-family='sans-serif'%3ECrop%3C/text%3E%3C/svg%3E`;
+  }
+
+  onCropImgErr(event: Event, category?: string) {
+    (event.target as HTMLImageElement).src = this.cropPlaceholder(category);
   }
 }

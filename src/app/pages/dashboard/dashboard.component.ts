@@ -78,7 +78,9 @@ import { User, CropListing } from '../../models/models';
           </div>
           <div class="item-stack" *ngIf="listings.length>0">
             <div class="is-row" *ngFor="let l of listings.slice(0,5)">
-              <div class="is-emoji">{{ getCropEmoji(l.category) }}</div>
+              <img [src]="l.imageUrl || cropPlaceholder(l.category)"
+                   [alt]="l.cropName" class="is-thumb"
+                   (error)="onThumbErr($event, l.category)">
               <div class="is-body">
                 <div class="is-name">{{ l.cropName }}</div>
                 <div class="is-meta">{{ l.quantity }}{{ l.unit }} · <b>₹{{ l.pricePerUnit }}</b>/{{ l.unit }}</div>
@@ -163,7 +165,9 @@ import { User, CropListing } from '../../models/models';
           </div>
           <div class="item-stack">
             <div class="is-row" *ngFor="let l of listings.slice(0,5)">
-              <div class="is-emoji">{{ getCropEmoji(l.category) }}</div>
+              <img [src]="l.imageUrl || cropPlaceholder(l.category)"
+                   [alt]="l.cropName" class="is-thumb"
+                   (error)="onThumbErr($event, l.category)">
               <div class="is-body">
                 <div class="is-name">{{ l.cropName }}</div>
                 <div class="is-meta">{{ l.farmerName }} · ₹{{ l.pricePerUnit }}/{{ l.unit }}</div>
@@ -394,6 +398,7 @@ import { User, CropListing } from '../../models/models';
     .is-row { display:flex; align-items:center; gap:11px; padding:9px 8px; border-radius:10px; transition:background 0.15s; }
     .is-row:hover { background:var(--sage-50); }
     .is-emoji { font-size:1.25rem; flex-shrink:0; }
+    .is-thumb { width:42px; height:42px; border-radius:9px; object-fit:cover; flex-shrink:0; border:1.5px solid rgba(30,138,44,0.12); }
     .is-body  { flex:1; min-width:0; }
     .is-name  { font-size:0.85rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .is-meta  { font-size:0.74rem; color:var(--text-muted); }
@@ -519,4 +524,21 @@ export class DashboardComponent implements OnInit {
   getCropEmoji(c?: string): string { const m: Record<string,string> = { Vegetables:'🥬', Fruits:'🍎', Grains:'🌾', Pulses:'🫘', Spices:'🌶️', Flowers:'🌸' }; return m[c||'']||'🌱'; }
   getStatusColor(s: string): string { const m: Record<string,string> = { pending:'amber', accepted:'green', completed:'blue', rejected:'red', cancelled:'red' }; return m[s]||''; }
   roleGradient(r?: string): string { const m: Record<string,string> = { farmer:'linear-gradient(135deg,#4a9050,#255c30)', buyer:'linear-gradient(135deg,#3b82f6,#1d4ed8)', vehicle_owner:'linear-gradient(135deg,#f59e0b,#b45309)', manpower:'linear-gradient(135deg,#ec4899,#9d174d)', admin:'linear-gradient(135deg,#8b5cf6,#4c1d95)' }; return m[r||'']||'linear-gradient(135deg,#6b7280,#374151)'; }
+
+  cropPlaceholder(category?: string): string {
+    const m: Record<string,string> = {
+      Vegetables: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='160' viewBox='0 0 200 160'%3E%3Crect width='200' height='160' fill='%23dcfce7'/%3E%3Ctext x='100' y='75' text-anchor='middle' font-size='48'%3E%F0%9F%A5%A6%3C/text%3E%3Ctext x='100' y='120' text-anchor='middle' font-size='13' fill='%23166534' font-family='sans-serif'%3EVegetables%3C/text%3E%3C/svg%3E`,
+      Fruits:     `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='160' viewBox='0 0 200 160'%3E%3Crect width='200' height='160' fill='%23fef9c3'/%3E%3Ctext x='100' y='75' text-anchor='middle' font-size='48'%3E%F0%9F%8D%8A%3C/text%3E%3Ctext x='100' y='120' text-anchor='middle' font-size='13' fill='%23713f12' font-family='sans-serif'%3EFruits%3C/text%3E%3C/svg%3E`,
+      Grains:     `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='160' viewBox='0 0 200 160'%3E%3Crect width='200' height='160' fill='%23fef3c7'/%3E%3Ctext x='100' y='75' text-anchor='middle' font-size='48'%3E%F0%9F%8C%BE%3C/text%3E%3Ctext x='100' y='120' text-anchor='middle' font-size='13' fill='%2392400e' font-family='sans-serif'%3EGrains%3C/text%3E%3C/svg%3E`,
+      Pulses:     `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='160' viewBox='0 0 200 160'%3E%3Crect width='200' height='160' fill='%23fce7f3'/%3E%3Ctext x='100' y='75' text-anchor='middle' font-size='48'%3E%F0%9F%AB%98%3C/text%3E%3Ctext x='100' y='120' text-anchor='middle' font-size='13' fill='%239d174d' font-family='sans-serif'%3EPulses%3C/text%3E%3C/svg%3E`,
+      Spices:     `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='160' viewBox='0 0 200 160'%3E%3Crect width='200' height='160' fill='%23ffedd5'/%3E%3Ctext x='100' y='75' text-anchor='middle' font-size='48'%3E%F0%9F%8C%B6%3C/text%3E%3Ctext x='100' y='120' text-anchor='middle' font-size='13' fill='%239a3412' font-family='sans-serif'%3ESpices%3C/text%3E%3C/svg%3E`,
+      Oilseeds:   `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='160' viewBox='0 0 200 160'%3E%3Crect width='200' height='160' fill='%23fef9c3'/%3E%3Ctext x='100' y='75' text-anchor='middle' font-size='48'%3E%F0%9F%A5%9C%3C/text%3E%3Ctext x='100' y='120' text-anchor='middle' font-size='13' fill='%23713f12' font-family='sans-serif'%3EOilseeds%3C/text%3E%3C/svg%3E`,
+    };
+    return m[category||''] || `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='160' viewBox='0 0 200 160'%3E%3Crect width='200' height='160' fill='%23f0fdf4'/%3E%3Ctext x='100' y='75' text-anchor='middle' font-size='48'%3E%F0%9F%8C%BF%3C/text%3E%3Ctext x='100' y='120' text-anchor='middle' font-size='13' fill='%23166534' font-family='sans-serif'%3ECrop%3C/text%3E%3C/svg%3E`;
+  }
+
+  onThumbErr(event: Event, category?: string): void {
+    const img = event.target as HTMLImageElement;
+    if (img) img.src = this.cropPlaceholder(category);
+  }
 }

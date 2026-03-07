@@ -46,6 +46,7 @@ export interface CropListing {
   quantity: number;
   unit: string;
   pricePerUnit: number;
+  imageUrl?: string;
   description?: string;
   location?: string;
   harvestDate?: string;
@@ -99,6 +100,7 @@ export interface Vehicle {
   numberPlate?: string;
   type: string;
   price: number;
+  pricePerHour?: number;
   capacity?: string;
   location?: string;
   description?: string;
@@ -120,6 +122,9 @@ export interface VehicleBooking {
   ownerPhone?: string;
   hireDate: string;
   days: number;
+  bookingMode?: string;
+  startHour?: number;
+  numHours?: number;
   totalPrice: number;
   status: 'pending' | 'accepted' | 'rejected' | 'completed';
   message?: string;
@@ -138,6 +143,7 @@ export interface ManpowerListing {
   title: string;
   skills?: string;
   dailyRate: number;
+  hourlyRate?: number;
   location?: string;
   experience?: string;
   availability: 'available' | 'busy' | 'unavailable';
