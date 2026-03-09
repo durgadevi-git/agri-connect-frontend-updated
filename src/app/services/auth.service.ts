@@ -30,6 +30,10 @@ export class AuthService {
     return this.http.post<AuthResponse>(`${this.apiUrl}/auth/register`, req).pipe(tap(r => this.saveSession(r)));
   }
 
+  forgotPassword(email: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/forgot-password`, { email });
+  }
+
   logout(): void {
     this.http.post(`${this.apiUrl}/auth/logout`, {}).subscribe({ error: () => {} });
     localStorage.clear(); sessionStorage.clear();

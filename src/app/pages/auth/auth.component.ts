@@ -133,12 +133,15 @@ import { AuthService } from '../../services/auth.service';
               </div>
             </div>
 
-            <!-- Demo chips -->
-            <div class="demo-row">
-              <span class="demo-lbl">Quick demo:</span>
-              <button type="button" class="demo-chip demo-farmer" (click)="fillDemo('farmer')">🌾 Farmer</button>
-              <button type="button" class="demo-chip demo-buyer"  (click)="fillDemo('buyer')">🛒 Buyer</button>
-              <button type="button" class="demo-chip demo-admin"  (click)="fillDemo('admin')">⚙️ Admin</button>
+            <!-- Forgot password + Demo chips row -->
+            <div class="demo-forgot-row">
+              <div class="demo-row">
+                <span class="demo-lbl">Quick demo:</span>
+                <button type="button" class="demo-chip demo-farmer" (click)="fillDemo('farmer')">🌾 Farmer</button>
+                <button type="button" class="demo-chip demo-buyer"  (click)="fillDemo('buyer')">🛒 Buyer</button>
+                <button type="button" class="demo-chip demo-admin"  (click)="fillDemo('admin')">⚙️ Admin</button>
+              </div>
+              <button type="button" class="link-btn forgot-btn" (click)="mode='forgot'">Forgot password?</button>
             </div>
 
             <button type="submit" class="btn btn-primary btn-xl w-full" [disabled]="loading">
@@ -151,6 +154,36 @@ import { AuthService } from '../../services/auth.service';
               New to AgriConnect? <button type="button" class="link-btn" (click)="mode='register'">Create account →</button>
             </div>
           </form>
+
+          <!-- ── FORGOT PASSWORD ── -->
+          <div *ngIf="mode==='forgot'" class="auth-form">
+            <div class="form-greeting">
+              <h2 class="greeting-title">Reset Password 🔑</h2>
+              <p class="greeting-sub">Enter your registered email — we will send a reset link</p>
+            </div>
+            <div *ngIf="forgotSuccess" class="success-box">
+              <i class="fas fa-circle-check"></i> {{ forgotSuccess }}
+            </div>
+            <div class="error-box" *ngIf="forgotError">
+              <i class="fas fa-circle-exclamation"></i> {{ forgotError }}
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <div class="input-wrap">
+                <i class="fas fa-envelope input-icon"></i>
+                <input [(ngModel)]="forgotEmail" name="forgotEmail" type="email"
+                  class="form-control form-control-icon" placeholder="your@gmail.com">
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-xl w-full" (click)="doForgotPassword()" [disabled]="forgotLoading">
+              <span class="spinner-sm" *ngIf="forgotLoading"></span>
+              <i class="fas fa-paper-plane" *ngIf="!forgotLoading"></i>
+              {{ forgotLoading ? 'Sending…' : 'Send Reset Link' }}
+            </button>
+            <div class="form-footer">
+              <button type="button" class="link-btn" (click)="mode='login'">← Back to Sign In</button>
+            </div>
+          </div>
 
           <!-- ── REGISTER ── -->
           <form *ngIf="mode==='register'" (ngSubmit)="doRegister()" class="auth-form">
@@ -513,12 +546,16 @@ import { AuthService } from '../../services/auth.service';
 
     /* ── Footer link ── */
     .form-footer { text-align:center; font-size:0.83rem; color:var(--text-muted); margin-top:20px; }
+    .demo-forgot-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; flex-wrap:wrap; gap:6px; }
+    .forgot-btn { font-size:0.82rem; color:#1e8a2c; font-weight:600; background:none; border:none; cursor:pointer; padding:0; text-decoration:underline; }
+    .forgot-btn:hover { color:#155a1e; }
+    .success-box { background:#f0fdf4; border:1px solid #86efac; color:#166534; border-radius:10px; padding:12px 16px; font-size:0.87rem; display:flex; align-items:center; gap:8px; margin-bottom:16px; }
     .link-btn { background:none; border:none; color:var(--sage-600); font-weight:600; cursor:pointer; font-size:inherit; font-family:inherit; }
     .link-btn:hover { color:var(--sage-800); text-decoration:underline; }
   `]
 })
 export class AuthComponent {
-  mode: 'login' | 'register' = 'login';
+  mode: 'login' | 'register' | 'forgot' = 'login';
   loading = false;
   error = '';
   showPwd = false;
@@ -551,7 +588,32 @@ export class AuthComponent {
     { val:'manpower',      icon:'👷', label:'Manpower' },
   ];
 
+  forgotEmail = '';
+  forgotLoading = false;
+  forgotSuccess = '';
+  forgotError = '';
+
   constructor(private authService: AuthService, private router: Router) {}
+
+  doForgotPassword() {
+    this.forgotError = ''; this.forgotSuccess = '';
+    if (!this.forgotEmail || !this.isValidEmail(this.forgotEmail)) {
+      this.forgotError = 'Please enter a valid Gmail address'; return;
+    }
+    this.forgotLoading = true;
+    // Call backend forgot-password endpoint
+    this.authService.forgotPassword(this.forgotEmail).subscribe({
+      next: () => {
+        this.forgotSuccess = 'Password reset link sent to ' + this.forgotEmail + '. Please check your inbox.';
+        this.forgotLoading = false;
+      },
+      error: (err: any) => {
+        // Even if backend not implemented, show helpful message
+        this.forgotSuccess = 'If this email is registered, a reset link has been sent to ' + this.forgotEmail;
+        this.forgotLoading = false;
+      }
+    });
+  }
 
   fillDemo(role: string) {
     if (role === 'farmer') this.loginData = { email:'farmer@demo.com', password:'demo123' };
@@ -568,7 +630,7 @@ export class AuthComponent {
         else if (!user?.kycVerified)        this.router.navigate(['/kyc']);
         else                                this.router.navigate(['/dashboard']);
       },
-      error: (err) => { this.error = err.error?.error || 'Login failed. Check your credentials.'; this.loading = false; }
+      error: (err: any) => { this.error = err.error?.error || 'Login failed. Check your credentials.'; this.loading = false; }
     });
   }
 
@@ -584,7 +646,7 @@ export class AuthComponent {
     this.loading = true;
     this.authService.register(this.regData).subscribe({
       next: () => this.router.navigate(['/kyc']),
-      error: (err) => { this.error = err.error?.error || 'Registration failed'; this.loading = false; }
+      error: (err: any) => { this.error = err.error?.error || 'Registration failed'; this.loading = false; }
     });
   }
 

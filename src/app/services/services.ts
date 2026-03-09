@@ -100,6 +100,12 @@ export class ChatService {
   sendMessage(receiverId: number, message: string): Observable<any> {
     return this.http.post(`${this.url}/send`, { receiverId, message });
   }
+  deleteMessage(messageId: number): Observable<any> {
+    return this.http.delete(`${this.url}/message/${messageId}`);
+  }
+  deleteConversation(userId: number): Observable<any> {
+    return this.http.delete(`${this.url}/conversation/${userId}`);
+  }
 }
 
 // ─── Stats Service ────────────────────────────────────────

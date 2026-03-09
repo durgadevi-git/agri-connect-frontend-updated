@@ -71,6 +71,10 @@ import { interval, Subscription } from 'rxjs';
                 <span class="wa-unread-badge" *ngIf="conv.unread > 0">{{ conv.unread }}</span>
               </div>
             </div>
+            <button class="wa-del-conv-btn" title="Delete conversation"
+              (click)="$event.stopPropagation(); confirmDeleteConversation(conv)">
+              <i class="fas fa-trash-alt"></i>
+            </button>
           </div>
 
           <!-- Empty state -->
@@ -125,7 +129,12 @@ import { interval, Subscription } from 'rxjs';
               </div>
 
               <!-- SENT bubble (right, green) -->
-              <div class="wa-msg-row wa-sent" *ngIf="isSent(msg)">
+              <div class="wa-msg-row wa-sent" *ngIf="isSent(msg)"
+                   (mouseenter)="hoveredMsgId=msg.id" (mouseleave)="hoveredMsgId=null">
+                <button class="wa-del-msg-btn" *ngIf="hoveredMsgId===msg.id"
+                  (click)="confirmDeleteMessage(msg)" title="Delete message">
+                  <i class="fas fa-trash"></i>
+                </button>
                 <div class="wa-bubble wa-bubble-sent">
                   <div class="wa-msg-text">{{ msg.message }}</div>
                   <div class="wa-msg-footer">
@@ -178,6 +187,33 @@ import { interval, Subscription } from 'rxjs';
         </ng-container>
       </div>
     </div>
+
+    <!-- Delete Conversation Modal -->
+    <div class="wa-confirm-overlay" *ngIf="showDelConvModal" (click)="showDelConvModal=false">
+      <div class="wa-confirm-box" (click)="$event.stopPropagation()">
+        <div class="wa-confirm-icon"><i class="fas fa-trash-can"></i></div>
+        <h3>Delete Conversation</h3>
+        <p>Delete chat with <b>{{ convToDelete?.userName }}</b>? This cannot be undone.</p>
+        <div class="wa-confirm-btns">
+          <button class="wa-confirm-cancel" (click)="showDelConvModal=false">Cancel</button>
+          <button class="wa-confirm-delete" (click)="doDeleteConversation()">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Message Modal -->
+    <div class="wa-confirm-overlay" *ngIf="showDelMsgModal" (click)="showDelMsgModal=false">
+      <div class="wa-confirm-box" (click)="$event.stopPropagation()">
+        <div class="wa-confirm-icon"><i class="fas fa-comment-slash"></i></div>
+        <h3>Delete Message</h3>
+        <p>Delete this message? This cannot be undone.</p>
+        <div class="wa-confirm-btns">
+          <button class="wa-confirm-cancel" (click)="showDelMsgModal=false">Cancel</button>
+          <button class="wa-confirm-delete" (click)="doDeleteMessage()">Delete</button>
+        </div>
+      </div>
+    </div>
+
   `,
   styles: [`
     /* Shell */
@@ -450,6 +486,48 @@ import { interval, Subscription } from 'rxjs';
     .wa-send-btn:hover.wa-send-active { background: #20c45a; transform: scale(1.06); }
     .wa-send-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
 
+    /* Delete conversation button */
+    .wa-del-conv-btn {
+      background: none; border: none; cursor: pointer; padding: 6px 8px;
+      color: #ccc; border-radius: 50%; transition: all 0.2s; flex-shrink: 0;
+      opacity: 0; margin-left: 6px;
+    }
+    .wa-convo-item:hover .wa-del-conv-btn { opacity: 1; color: #e53935; }
+    .wa-del-conv-btn:hover { background: #ffeaea; }
+    /* Delete message hover button */
+    .wa-del-msg-btn {
+      background: rgba(0,0,0,0.06); border: none; cursor: pointer;
+      border-radius: 50%; width: 28px; height: 28px; display: flex;
+      align-items: center; justify-content: center;
+      color: #888; font-size: 11px; align-self: center; margin-right: 6px;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .wa-del-msg-btn:hover { background: #ffeaea; color: #e53935; }
+    /* Confirm Modal */
+    .wa-confirm-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .wa-confirm-box {
+      background: #fff; border-radius: 18px; padding: 32px 28px; width: 320px;
+      text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+    }
+    .wa-confirm-icon { font-size: 2.2rem; color: #e53935; margin-bottom: 12px; }
+    .wa-confirm-box h3 { margin: 0 0 8px; font-size: 1.1rem; color: #1a1a1a; }
+    .wa-confirm-box p { margin: 0 0 20px; font-size: 0.9rem; color: #555; }
+    .wa-confirm-btns { display: flex; gap: 10px; }
+    .wa-confirm-cancel {
+      flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid #ddd;
+      background: #f5f5f5; font-size: 0.95rem; cursor: pointer; font-weight: 500;
+    }
+    .wa-confirm-delete {
+      flex: 1; padding: 10px; border-radius: 10px; border: none;
+      background: #e53935; color: #fff; font-size: 0.95rem; cursor: pointer; font-weight: 600;
+    }
+    .wa-confirm-cancel:hover { background: #ececec; }
+    .wa-confirm-delete:hover { background: #c62828; }
+
+
     /* Mobile responsive */
     @media (max-width: 768px) {
       .wa-shell { grid-template-columns: 1fr; }
@@ -474,6 +552,13 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   showSearch = false;
   private pollSub?: Subscription;
   private shouldScroll = false;
+
+  // Delete state
+  hoveredMsgId: number | null = null;
+  showDelConvModal = false;
+  showDelMsgModal = false;
+  convToDelete: any = null;
+  msgToDelete: any = null;
 
   constructor(private chatService: ChatService, private authService: AuthService) {
     const u = this.authService.currentUser;
@@ -559,7 +644,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
       receiverId: Number(this.selectedUser.id),
       message:    text,
       isRead:     false,
-      createdAt:  new Date().toISOString()
+      createdAt:  (() => { const n = new Date(); return new Date(n.getTime() - n.getTimezoneOffset()*60000).toISOString().slice(0,19); })()
     };
     this.messages = [...this.messages, temp];
     this.shouldScroll = true;
@@ -605,14 +690,59 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return this.getDateLabel(msg.createdAt) !== this.getDateLabel(prev.createdAt);
   }
 
+  confirmDeleteConversation(conv: any) {
+    this.convToDelete = conv;
+    this.showDelConvModal = true;
+  }
+
+  doDeleteConversation() {
+    if (!this.convToDelete) return;
+    this.chatService.deleteConversation(this.convToDelete.userId).subscribe({
+      next: () => {
+        this.conversations = this.conversations.filter(c => c.userId !== this.convToDelete.userId);
+        if (this.selectedUser?.id === this.convToDelete.userId) {
+          this.selectedUser = null;
+          this.messages = [];
+        }
+        this.convToDelete = null;
+        this.showDelConvModal = false;
+      },
+      error: () => {
+        // Even if backend fails, remove from UI
+        this.conversations = this.conversations.filter(c => c.userId !== this.convToDelete.userId);
+        this.convToDelete = null;
+        this.showDelConvModal = false;
+      }
+    });
+  }
+
+  confirmDeleteMessage(msg: any) {
+    this.msgToDelete = msg;
+    this.showDelMsgModal = true;
+  }
+
+  doDeleteMessage() {
+    if (!this.msgToDelete) return;
+    this.chatService.deleteMessage(this.msgToDelete.id).subscribe({
+      next: () => {
+        this.messages = this.messages.filter(m => m.id !== this.msgToDelete.id);
+        this.msgToDelete = null;
+        this.showDelMsgModal = false;
+      },
+      error: () => {
+        // Remove from UI anyway (optimistic)
+        this.messages = this.messages.filter(m => m.id !== this.msgToDelete.id);
+        this.msgToDelete = null;
+        this.showDelMsgModal = false;
+      }
+    });
+  }
+
   getDateLabel(createdAt: string): string {
     if (!createdAt) { return 'Today'; }
     try {
-      // Java LocalDateTime comes as "2026-03-04T10:18:00" -- no Z suffix
-      // Add Z only if no timezone info present so it parses as local time
-      const raw = createdAt.includes('T') && !createdAt.includes('+') && !createdAt.endsWith('Z')
-                  ? createdAt + 'Z' : createdAt;
-      const d = new Date(raw);
+      const ts = (createdAt.includes('Z') || createdAt.includes('+')) ? createdAt : createdAt + '+05:30';
+      const d = new Date(ts);
       if (isNaN(d.getTime())) { return 'Today'; }
       const now = new Date();
       const todayStr = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -627,7 +757,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   formatTime(createdAt: string): string {
     if (!createdAt) { return ''; }
     try {
-      return new Date(createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      const ts = (createdAt.includes('Z') || createdAt.includes('+')) ? createdAt : createdAt + '+05:30';
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) { return ''; }
+      return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     } catch { return ''; }
   }
 

@@ -559,7 +559,15 @@ export class MarketplaceComponent implements OnInit {
   ngOnInit() {
     this.user = this.authService.currentUser;
     this.cropService.getAllListings().subscribe({
-      next: (data) => { this.listings = data; this.filtered = [...data]; this.loading = false; },
+      next: (data) => {
+        this.listings = data.map((c: any) => ({
+          ...c,
+          imageUrl: c.imageUrl
+            ? (c.imageUrl.startsWith('http') ? c.imageUrl : 'https://web-production-29a8c2.up.railway.app' + c.imageUrl)
+            : null
+        }));
+        this.filtered = [...this.listings]; this.loading = false;
+      },
       error: () => { this.loading = false; }
     });
   }

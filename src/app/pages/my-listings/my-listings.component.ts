@@ -376,7 +376,13 @@ export class MyListingsComponent implements OnInit {
 
   load() {
     this.cropService.getMyListings().subscribe({
-      next: l => { this.listings = l; this.loading = false; },
+      next: l => {
+        this.listings = l.map((c: any) => ({
+          ...c,
+          imageUrl: c.imageUrl ? (c.imageUrl.startsWith("http") ? c.imageUrl : "https://web-production-29a8c2.up.railway.app" + c.imageUrl) : null
+        }));
+        this.loading = false;
+      },
       error: () => this.loading = false
     });
   }
