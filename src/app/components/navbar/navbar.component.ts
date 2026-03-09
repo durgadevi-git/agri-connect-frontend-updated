@@ -213,11 +213,12 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
   fmtTime(d: any): string {
     if (!d) return '';
-    const diff = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+    const ts = typeof d === 'string' && !d.includes('Z') && !d.includes('+') ? d + 'Z' : d;
+    const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
     if (diff < 1) return 'Just now';
     if (diff < 60) return `${diff}m ago`;
     if (diff < 1440) return `${Math.floor(diff/60)}h ago`;
-    return new Date(d).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+    return new Date(ts).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
   }
 
   formatRole(r?: string): string {
