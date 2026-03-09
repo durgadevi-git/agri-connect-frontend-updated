@@ -379,7 +379,7 @@ export class MyListingsComponent implements OnInit {
       next: l => {
         this.listings = l.map((c: any) => ({
           ...c,
-          imageUrl: c.imageUrl ? (c.imageUrl.startsWith("http") ? c.imageUrl : "https://web-production-29a8c2.up.railway.app" + c.imageUrl) : null
+          imageUrl: c.imageUrl ? (c.imageUrl.startsWith('data:') || c.imageUrl.startsWith('http') ? c.imageUrl : 'https://web-production-29a8c2.up.railway.app' + c.imageUrl) : null
         }));
         this.loading = false;
       },
@@ -417,15 +417,28 @@ export class MyListingsComponent implements OnInit {
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
 
-    if (file.size > 2 * 1024 * 1024) {
-      this.error = 'Image too large. Max 2MB allowed.';
+    if (file.size > 5 * 1024 * 1024) {
+      this.error = 'Image too large. Max 5MB allowed.';
       setTimeout(() => this.error = '', 4000);
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      this.form.imageUrl = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        // Compress image using canvas — max 400x400, quality 0.7
+        const canvas = document.createElement('canvas');
+        const MAX = 400;
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+        else        { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, w, h);
+        this.form.imageUrl = canvas.toDataURL('image/jpeg', 0.7);
+      };
+      img.src = e.target?.result as string;
     };
     reader.readAsDataURL(file);
   }
