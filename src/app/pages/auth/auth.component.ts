@@ -547,7 +547,7 @@ import { AuthService } from '../../services/auth.service';
     /* ── Footer link ── */
     .form-footer { text-align:center; font-size:0.83rem; color:var(--text-muted); margin-top:20px; }
     .demo-forgot-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; flex-wrap:wrap; gap:6px; }
-    .forgot-btn { font-size:0.82rem; color:#1e8a2c; font-weight:600; background:none; border:none; cursor:pointer; padding:0; text-decoration:underline; }
+    .forgot-btn { font-size:0.82rem; color:#1e8a2c; font-weight:600; background:none; border:none; cursor:pointer; padding:0; text-decoration:underline; margin-top:8px; display:inline-block; }
     .forgot-btn:hover { color:#155a1e; }
     .success-box { background:#f0fdf4; border:1px solid #86efac; color:#166534; border-radius:10px; padding:12px 16px; font-size:0.87rem; display:flex; align-items:center; gap:8px; margin-bottom:16px; }
     .link-btn { background:none; border:none; color:var(--sage-600); font-weight:600; cursor:pointer; font-size:inherit; font-family:inherit; }

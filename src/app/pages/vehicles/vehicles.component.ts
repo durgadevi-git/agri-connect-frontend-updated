@@ -59,6 +59,11 @@ import { interval, Subscription } from 'rxjs';
             </div>
           </div>
 
+          <!-- Vehicle image -->
+          <div class="vc-img-wrap">
+            <img [src]="vehicleImage(v.type, v.id)" class="vc-img" [alt]="v.type">
+          </div>
+
           <div class="vc-name">{{ v.name }}</div>
           <div class="vc-plate">{{ v.numberPlate }}</div>
 
@@ -559,6 +564,9 @@ import { interval, Subscription } from 'rxjs';
     .dot-red { background:#dc2626; }
     .vc-status-txt { font-size:0.72rem; font-weight:700; }
     .txt-green { color:#16a34a; } .txt-red { color:#dc2626; }
+    .vc-img-wrap { height:110px; margin:-4px -16px 12px; overflow:hidden; border-radius:0; display:flex; align-items:center; justify-content:center; background:#f0fdf4; }
+    .vc-img { width:100%; height:110px; object-fit:contain; transition:transform 0.3s ease; }
+    .vehicle-card:hover .vc-img { transform:scale(1.05); }
     .vc-name { font-size:1rem; font-weight:700; color:#1a2e1c; }
     .vc-plate { font-size:0.75rem; color:#9ca3af; letter-spacing:0.05em; }
     .vc-price-row { display:flex; align-items:baseline; gap:10px; }
@@ -973,4 +981,25 @@ export class VehiclesComponent implements OnInit, OnDestroy {
     const m: any = { pending:'warning', accepted:'info', rejected:'danger', completed:'success' };
     return m[s] || 'muted';
   }
+
+  vehicleImage(type: string, id: number): string {
+    const palettes = [
+      ['e8f5e9','2e7d32','1b5e20'],
+      ['e3f2fd','1565c0','0d47a1'],
+      ['fff8e1','f57f17','e65100'],
+      ['fce4ec','c62828','b71c1c'],
+    ];
+    const p = palettes[(id || 0) % 4];
+    const bg = p[0], body = p[1], dark = p[2];
+    const svgs: any = {
+      Tractor: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><rect width='200' height='120' fill='%23${bg}'/><circle cx='65' cy='85' r='28' fill='%23333' stroke='%23111' stroke-width='3'/><circle cx='65' cy='85' r='18' fill='%23555'/><circle cx='65' cy='85' r='6' fill='%23999'/><circle cx='145' cy='90' r='16' fill='%23333' stroke='%23111' stroke-width='2'/><circle cx='145' cy='90' r='9' fill='%23555'/><rect x='60' y='50' width='90' height='38' rx='4' fill='%23${body}'/><rect x='100' y='35' width='45' height='30' rx='4' fill='%23${body}'/><rect x='104' y='38' width='36' height='20' rx='3' fill='%2387ceeb' opacity='0.8'/><rect x='95' y='25' width='6' height='22' rx='2' fill='%23${dark}'/><rect x='60' y='52' width='45' height='14' rx='3' fill='%23${dark}'/><circle cx='152' cy='72' r='5' fill='%23ffeb3b'/></svg>`,
+      Mini_Truck: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><rect width='200' height='120' fill='%23${bg}'/><circle cx='50' cy='90' r='18' fill='%23222'/><circle cx='50' cy='90' r='10' fill='%23555'/><circle cx='150' cy='90' r='18' fill='%23222'/><circle cx='150' cy='90' r='10' fill='%23555'/><rect x='20' y='55' width='85' height='35' rx='3' fill='%23${dark}'/><rect x='105' y='45' width='70' height='45' rx='5' fill='%23${body}'/><rect x='110' y='48' width='58' height='28' rx='4' fill='%2387ceeb' opacity='0.85'/><circle cx='172' cy='80' r='5' fill='%23ffeb3b'/><line x1='140' y1='48' x2='140' y2='90' stroke='%23${dark}' stroke-width='2'/></svg>`,
+      Heavy_Truck: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><rect width='200' height='120' fill='%23${bg}'/><circle cx='40' cy='90' r='18' fill='%23222'/><circle cx='70' cy='90' r='18' fill='%23222'/><circle cx='155' cy='90' r='18' fill='%23222'/><rect x='15' y='40' width='115' height='52' rx='3' fill='%23${dark}'/><rect x='130' y='38' width='58' height='54' rx='5' fill='%23${body}'/><rect x='134' y='42' width='48' height='30' rx='4' fill='%2387ceeb' opacity='0.85'/><rect x='180' y='75' width='8' height='5' rx='2' fill='%23ffeb3b'/><rect x='125' y='20' width='5' height='22' rx='2' fill='%23888'/></svg>`,
+      Harvester: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><rect width='200' height='120' fill='%23${bg}'/><circle cx='55' cy='82' r='25' fill='%23333'/><circle cx='55' cy='82' r='15' fill='%23555'/><circle cx='148' cy='88' r='18' fill='%23333'/><rect x='50' y='40' width='105' height='45' rx='5' fill='%23${body}'/><rect x='110' y='32' width='42' height='30' rx='4' fill='%2387ceeb' opacity='0.85'/><rect x='8' y='65' width='48' height='12' rx='3' fill='%23${dark}'/><polygon points='8,65 8,77 16,71' fill='%23ffeb3b'/><polygon points='24,65 24,77 32,71' fill='%23ffeb3b'/><polygon points='40,65 40,77 48,71' fill='%23ffeb3b'/><rect x='100' y='22' width='6' height='20' rx='2' fill='%23888'/></svg>`,
+      Trailer: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><rect width='200' height='120' fill='%23${bg}'/><circle cx='40' cy='90' r='16' fill='%23222'/><circle cx='75' cy='90' r='16' fill='%23222'/><circle cx='145' cy='90' r='16' fill='%23222'/><rect x='15' y='38' width='175' height='54' rx='4' fill='%23${body}'/><rect x='15' y='38' width='175' height='8' rx='4' fill='%23${dark}'/><rect x='15' y='84' width='175' height='8' rx='4' fill='%23${dark}'/><line x1='55' y1='46' x2='55' y2='84' stroke='%23${dark}' stroke-width='2' opacity='0.5'/><line x1='95' y1='46' x2='95' y2='84' stroke='%23${dark}' stroke-width='2' opacity='0.5'/><line x1='135' y1='46' x2='135' y2='84' stroke='%23${dark}' stroke-width='2' opacity='0.5'/><rect x='183' y='55' width='5' height='8' rx='2' fill='%23f44336'/></svg>`
+    };
+    const svg = svgs[type] || svgs['Tractor'];
+    return 'data:image/svg+xml,' + svg;
+  }
+
 }

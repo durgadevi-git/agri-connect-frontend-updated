@@ -741,26 +741,29 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   getDateLabel(createdAt: string): string {
     if (!createdAt) { return 'Today'; }
     try {
-      const ts = (createdAt.includes('Z') || createdAt.includes('+')) ? createdAt : createdAt + '+05:30';
+      // Always parse as UTC then display in IST (Asia/Kolkata)
+      const ts = createdAt.includes('Z') || createdAt.includes('+') ? createdAt : createdAt + 'Z';
       const d = new Date(ts);
       if (isNaN(d.getTime())) { return 'Today'; }
-      const now = new Date();
-      const todayStr = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      const msgStr   = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const istNow   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const istMsg   = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const todayStr = new Date(istNow.getFullYear(), istNow.getMonth(), istNow.getDate()).getTime();
+      const msgStr   = new Date(istMsg.getFullYear(), istMsg.getMonth(), istMsg.getDate()).getTime();
       const diff = Math.floor((todayStr - msgStr) / 86400000);
       if (diff === 0) { return 'Today'; }
       if (diff === 1) { return 'Yesterday'; }
-      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      return istMsg.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
     } catch { return 'Today'; }
   }
 
   formatTime(createdAt: string): string {
     if (!createdAt) { return ''; }
     try {
-      const ts = (createdAt.includes('Z') || createdAt.includes('+')) ? createdAt : createdAt + '+05:30';
+      // Always treat as UTC, display in IST
+      const ts = createdAt.includes('Z') || createdAt.includes('+') ? createdAt : createdAt + 'Z';
       const d = new Date(ts);
       if (isNaN(d.getTime())) { return ''; }
-      return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
     } catch { return ''; }
   }
 
