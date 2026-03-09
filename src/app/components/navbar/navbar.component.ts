@@ -192,16 +192,26 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
   toggleNotif() {
     this.showNotif = !this.showNotif;
-    if (this.showNotif) this.loadNotifications();
+    if (this.showNotif) {
+      this.loadNotifications();
+      // Mark all unread as read when panel opens
+      setTimeout(() => {
+        this.notifications.filter(n => !n.isRead).forEach(n => {
+          this.orderService.markNotifRead(n.id).subscribe(() => n.isRead = true);
+        });
+      }, 800);
+    }
   }
 
   markRead(n: any) {
     if (!n.isRead) {
       this.orderService.markNotifRead(n.id).subscribe(() => n.isRead = true);
     }
-    // Navigate to chat for message-type notifications
     this.showNotif = false;
-    this.router.navigate(['/chat']);
+    // Navigate based on notification type
+    if (n.type === 'message') this.router.navigate(['/chat']);
+    else if (n.type === 'order') this.router.navigate(['/orders']);
+    else if (n.type === 'vehicle') this.router.navigate(['/vehicles']);
   }
 
   logout() { this.authService.logout(); }
